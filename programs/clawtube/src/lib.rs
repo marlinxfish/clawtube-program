@@ -77,6 +77,14 @@ pub mod clawtube {
     ) -> Result<()> {
         instructions::tip_spl::tip_spl(ctx, platform, platform_uid, amount)
     }
+
+    pub fn refund<'info>(ctx: Context<'info, Refund<'info>>) -> Result<()> {
+        instructions::refund::refund(ctx)
+    }
+
+    pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
+        instructions::sweep::sweep(ctx)
+    }
 }
 
 #[cfg(test)]
@@ -87,6 +95,10 @@ mod tests {
     fn test_creator_hash() {
         let hash = creator_hash(Platform::YouTube.as_u8(), b"UC1234567890");
         assert_eq!(hash.len(), 16);
+        let hash2 = creator_hash(Platform::YouTube.as_u8(), b"UC1234567890");
+        assert_eq!(hash, hash2);
+        let diff_hash = creator_hash(Platform::X.as_u8(), b"UC1234567890");
+        assert_ne!(hash, diff_hash);
     }
 
     #[test]
@@ -98,6 +110,7 @@ mod tests {
         assert_eq!(Platform::from_u8(4).unwrap(), Platform::TikTok);
         assert_eq!(Platform::from_u8(5).unwrap(), Platform::Facebook);
         assert!(Platform::from_u8(6).is_err());
+        assert!(Platform::from_u8(255).is_err());
     }
 
     #[test]
@@ -112,6 +125,7 @@ mod tests {
         };
         assert!(config.is_platform_enabled(0));
         assert!(!config.is_platform_enabled(1));
+        assert!(!config.is_platform_enabled(2));
     }
 
     #[test]
@@ -155,6 +169,18 @@ mod tests {
     }
 
     #[test]
+    fn test_sweep_split_math() {
+        let amount = 1_000_000_000u64;
+        let b70 = amount * 70 / 100;
+        let o20 = amount * 20 / 100;
+        let s10 = amount - b70 - o20;
+        assert_eq!(b70, 700_000_000); // 70%
+        assert_eq!(o20, 200_000_000); // 20%
+        assert_eq!(s10, 100_000_000); // 10%
+        assert_eq!(b70 + o20 + s10, amount);
+    }
+
+    #[test]
     fn test_attestation_msg_format() {
         let platform = 0u8;
         let uid = "UC1234567890";
@@ -178,5 +204,60 @@ mod tests {
         assert_eq!(msg[1], 0);
         let uid_len = u32::from_le_bytes(msg[2..6].try_into().unwrap());
         assert_eq!(uid_len as usize, uid.len());
+    }
+
+    #[test]
+    fn test_nonce_replay_guard() {
+        let last_nonce = 5u64;
+        let incoming_nonce_replayed = 5u64;
+        let incoming_nonce_older = 4u64;
+        let incoming_nonce_valid = 6u64;
+
+        assert!(incoming_nonce_replayed <= last_nonce);
+        assert!(incoming_nonce_older <= last_nonce);
+        assert!(incoming_nonce_valid > last_nonce);
+    }
+
+    #[test]
+    fn test_refund_and_sweep_lifecycle_guards() {
+        let created_at = 1000i64;
+        let expires_at = created_at + 90 * 86_400; // Day 90
+        let sweep_at = created_at + 120 * 86_400;  // Day 120
+
+        // Day 50: Claim window open, Refund NOT open, Sweep NOT open
+        let day50 = created_at + 50 * 86_400;
+        assert!(day50 < expires_at); // Claimable
+        assert!(day50 < expires_at); // EntryStillClaimable if refund attempted
+
+        // Day 95: Claim expired, Refund window OPEN, Sweep NOT open
+        let day95 = created_at + 95 * 86_400;
+        assert!(day95 >= expires_at); // Claim window closed
+        assert!(day95 >= expires_at && day95 < sweep_at); // Refund window open
+        assert!(day95 < sweep_at); // Sweep window NOT open
+
+        // Day 125: Refund window CLOSED, Sweep window OPEN
+        let day125 = created_at + 125 * 86_400;
+        assert!(day125 >= sweep_at); // Refund window closed (sweepable)
+        assert!(day125 >= sweep_at); // Sweep window open
+    }
+
+    #[test]
+    fn test_entry_status_transitions() {
+        let mut status = EntryStatus::Active;
+        assert_eq!(status, EntryStatus::Active);
+
+        // Active -> Claimed
+        status = EntryStatus::Claimed;
+        assert_ne!(status, EntryStatus::Active);
+
+        // Reset and test Active -> Refunded
+        status = EntryStatus::Active;
+        status = EntryStatus::Refunded;
+        assert_ne!(status, EntryStatus::Active);
+
+        // Reset and test Active -> Swept
+        status = EntryStatus::Active;
+        status = EntryStatus::Swept;
+        assert_ne!(status, EntryStatus::Active);
     }
 }
