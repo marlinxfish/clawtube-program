@@ -34,7 +34,7 @@ pub fn refund<'info>(ctx: Context<'info, Refund<'info>>) -> Result<()> {
         **donor_info.try_borrow_mut_lamports()? = donor_info
             .lamports()
             .checked_add(amount)
-            .unwrap();
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
     } else {
         let mint_key = entry.mint.unwrap();
         let slot = ctx

@@ -56,10 +56,10 @@ pub fn tip_spl(
 
     let fee = amount
         .checked_mul(DONATION_FEE_BPS)
-        .unwrap()
+        .ok_or(ClawtubeError::ZeroAmount)?
         .checked_div(10_000)
-        .unwrap();
-    let net = amount.checked_sub(fee).unwrap();
+        .ok_or(ClawtubeError::ZeroAmount)?;
+    let net = amount.checked_sub(fee).ok_or(ClawtubeError::ZeroAmount)?;
 
     if fee > 0 {
         transfer(
@@ -87,7 +87,9 @@ pub fn tip_spl(
         net,
     )?;
 
-    escrow.vault_totals[slot] = escrow.vault_totals[slot].checked_add(net).unwrap();
+    escrow.vault_totals[slot] = escrow.vault_totals[slot]
+        .checked_add(net)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?;
 
     let clock = Clock::get()?;
     let entry = &mut ctx.accounts.entry;
@@ -97,12 +99,21 @@ pub fn tip_spl(
     entry.mint = Some(mint_key);
     entry.donor = ctx.accounts.donor.key();
     entry.status = EntryStatus::Active;
-    entry.expires_at = clock.unix_timestamp + 90 * 86_400;
-    entry.sweep_at = clock.unix_timestamp + 120 * 86_400;
+    entry.expires_at = clock
+        .unix_timestamp
+        .checked_add(90 * 86_400)
+        .ok_or(ClawtubeError::ZeroAmount)?;
+    entry.sweep_at = clock
+        .unix_timestamp
+        .checked_add(120 * 86_400)
+        .ok_or(ClawtubeError::ZeroAmount)?;
     entry.bump = ctx.bumps.entry;
 
     let current_index = escrow.entry_count;
-    escrow.entry_count = escrow.entry_count.checked_add(1).unwrap();
+    escrow.entry_count = escrow
+        .entry_count
+        .checked_add(1)
+        .ok_or(ClawtubeError::NonceReplay)?;
 
     emit!(TipReceived {
         platform,

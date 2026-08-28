@@ -6,7 +6,10 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-clawtube = "CLawTubeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1"
+clawtube = "FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA"
+
+[programs.devnet]
+clawtube = "FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA"
 
 [registry]
 url = "https://api.apr.dev"

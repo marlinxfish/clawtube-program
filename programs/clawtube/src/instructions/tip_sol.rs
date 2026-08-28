@@ -44,10 +44,10 @@ pub fn tip_sol(
 
     let fee = amount
         .checked_mul(DONATION_FEE_BPS)
-        .unwrap()
+        .ok_or(ClawtubeError::ZeroAmount)?
         .checked_div(10_000)
-        .unwrap();
-    let net = amount.checked_sub(fee).unwrap();
+        .ok_or(ClawtubeError::ZeroAmount)?;
+    let net = amount.checked_sub(fee).ok_or(ClawtubeError::ZeroAmount)?;
 
     if fee > 0 {
         transfer(
@@ -81,12 +81,21 @@ pub fn tip_sol(
     entry.mint = None;
     entry.donor = ctx.accounts.donor.key();
     entry.status = EntryStatus::Active;
-    entry.expires_at = clock.unix_timestamp + 90 * 86_400;
-    entry.sweep_at = clock.unix_timestamp + 120 * 86_400;
+    entry.expires_at = clock
+        .unix_timestamp
+        .checked_add(90 * 86_400)
+        .ok_or(ClawtubeError::ZeroAmount)?;
+    entry.sweep_at = clock
+        .unix_timestamp
+        .checked_add(120 * 86_400)
+        .ok_or(ClawtubeError::ZeroAmount)?;
     entry.bump = ctx.bumps.entry;
 
     let current_index = escrow.entry_count;
-    escrow.entry_count = escrow.entry_count.checked_add(1).unwrap();
+    escrow.entry_count = escrow
+        .entry_count
+        .checked_add(1)
+        .ok_or(ClawtubeError::NonceReplay)?;
 
     emit!(TipReceived {
         platform,

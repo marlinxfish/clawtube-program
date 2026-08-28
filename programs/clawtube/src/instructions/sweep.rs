@@ -18,9 +18,21 @@ pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
     );
 
     let amount = entry.amount;
-    let b70 = amount.checked_mul(70).unwrap().checked_div(100).unwrap();
-    let o20 = amount.checked_mul(20).unwrap().checked_div(100).unwrap();
-    let s10 = amount.checked_sub(b70).unwrap().checked_sub(o20).unwrap();
+    let b70 = amount
+        .checked_mul(70)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?
+        .checked_div(100)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?;
+    let o20 = amount
+        .checked_mul(20)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?
+        .checked_div(100)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?;
+    let s10 = amount
+        .checked_sub(b70)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?
+        .checked_sub(o20)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?;
 
     if entry.mint.is_none() {
         let escrow_info = escrow.to_account_info();
@@ -35,15 +47,15 @@ pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
         **buyback_info.try_borrow_mut_lamports()? = buyback_info
             .lamports()
             .checked_add(b70)
-            .unwrap();
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
         **ops_info.try_borrow_mut_lamports()? = ops_info
             .lamports()
             .checked_add(o20)
-            .unwrap();
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
         **sweeper_info.try_borrow_mut_lamports()? = sweeper_info
             .lamports()
             .checked_add(s10)
-            .unwrap();
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
     } else {
         let mint_key = entry.mint.unwrap();
         let slot = ctx

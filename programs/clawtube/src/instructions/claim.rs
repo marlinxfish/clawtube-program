@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
+use solana_program::sysvar::instructions::ID as IX_SYSVAR_ID;
 use crate::creator_hash;
 use crate::error::ClawtubeError;
 use crate::event::Claimed;
 use crate::state::{CreatorEscrow, Entry, EntryStatus, PlatformConfig, CLAIM_FEE_BPS, MAX_HANDLE, MAX_PLATFORM_UID};
-
 pub fn claim<'info>(
     ctx: Context<'info, Claim<'info>>,
     platform_uid: String,
@@ -81,18 +81,29 @@ pub fn claim<'info>(
 
         let mut entry_data = entry_account_info.try_borrow_mut_data()?;
         let mut entry = Entry::try_deserialize(&mut &entry_data[..])?;
+        require_keys_eq!(
+            *entry_account_info.owner,
+            crate::ID,
+            ClawtubeError::InvalidEntryStatus
+        );
         require!(
             entry.status == EntryStatus::Active,
             ClawtubeError::InvalidEntryStatus
+        );
+        require!(
+            clock.unix_timestamp < entry.expires_at,
+            ClawtubeError::AttestationExpired
         );
 
         let amount = entry.amount;
         let fee = amount
             .checked_mul(CLAIM_FEE_BPS)
-            .unwrap()
+            .ok_or(ClawtubeError::VaultInvariantViolated)?
             .checked_div(10_000)
-            .unwrap();
-        let net = amount.checked_sub(fee).unwrap();
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
+        let net = amount
+            .checked_sub(fee)
+            .ok_or(ClawtubeError::VaultInvariantViolated)?;
 
         if entry.mint.is_none() {
             let escrow_info = escrow.to_account_info();
@@ -106,12 +117,12 @@ pub fn claim<'info>(
             **payout_info.try_borrow_mut_lamports()? = payout_info
                 .lamports()
                 .checked_add(net)
-                .unwrap();
+                .ok_or(ClawtubeError::VaultInvariantViolated)?;
             if fee > 0 {
                 **treasury_info.try_borrow_mut_lamports()? = treasury_info
                     .lamports()
                     .checked_add(fee)
-                    .unwrap();
+                    .ok_or(ClawtubeError::VaultInvariantViolated)?;
             }
         } else {
             let mint_key = entry.mint.unwrap();
@@ -147,11 +158,15 @@ fn verify_oracle_attestation(
     oracle: &Pubkey,
     expected_msg: &[u8],
 ) -> Result<()> {
-    if sysvar_instructions.data_is_empty() {
-        return Ok(());
-    }
+    require_keys_eq!(
+        *sysvar_instructions.key,
+        IX_SYSVAR_ID,
+        ClawtubeError::InvalidOracleSignature
+    );
 
     let data = sysvar_instructions.try_borrow_data()?;
+    require!(!data.is_empty(), ClawtubeError::InvalidOracleSignature);
+
     let oracle_bytes = oracle.as_ref();
 
     let mut found_oracle = false;
@@ -170,7 +185,6 @@ fn verify_oracle_attestation(
     );
     Ok(())
 }
-
 #[derive(Accounts)]
 #[instruction(platform_uid: String)]
 pub struct Claim<'info> {
@@ -187,6 +201,7 @@ pub struct Claim<'info> {
     #[account(mut)]
     pub payout: Signer<'info>,
     /// CHECK: sysvar instructions account for Ed25519 introspection
+    #[account(address = IX_SYSVAR_ID)]
     pub sysvar_instructions: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }

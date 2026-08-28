@@ -10,7 +10,7 @@ pub use event::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("CLawTubeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1");
+declare_id!("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA");
 
 pub fn creator_hash(platform: u8, platform_uid: &[u8]) -> [u8; 16] {
     solana_program::hash::hashv(&[&[platform], platform_uid]).to_bytes()[..16]
@@ -252,12 +252,42 @@ mod tests {
 
         // Reset and test Active -> Refunded
         status = EntryStatus::Active;
+        assert_eq!(status, EntryStatus::Active);
         status = EntryStatus::Refunded;
         assert_ne!(status, EntryStatus::Active);
 
         // Reset and test Active -> Swept
         status = EntryStatus::Active;
+        assert_eq!(status, EntryStatus::Active);
         status = EntryStatus::Swept;
         assert_ne!(status, EntryStatus::Active);
+    }
+
+    #[test]
+    fn test_sysvar_instructions_id_match() {
+        let expected_str = "Sysvar1nstructions1111111111111111111111111";
+        assert_eq!(solana_program::sysvar::instructions::ID.to_string(), expected_str);
+    }
+
+    #[test]
+    fn test_seed_length_limits() {
+        let max_uid = "a".repeat(crate::state::MAX_PLATFORM_UID);
+        let hash = creator_hash(Platform::YouTube.as_u8(), max_uid.as_bytes());
+        assert_eq!(hash.len(), 16);
+        assert!(hash.len() <= 32);
+        assert!(b"config".len() <= 32);
+        assert!(b"treasury".len() <= 32);
+        assert!(b"escrow".len() <= 32);
+        assert!(b"entry".len() <= 32);
+        assert!(b"buyback".len() <= 32);
+        assert!(b"ops".len() <= 32);
+    }
+
+    #[test]
+    fn test_checked_math_edge_cases() {
+        let zero = 0u64;
+        assert!(zero.checked_mul(DONATION_FEE_BPS).is_some());
+        let max = u64::MAX;
+        assert!(max.checked_add(1).is_none());
     }
 }
