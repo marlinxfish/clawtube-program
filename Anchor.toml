@@ -1,0 +1,19 @@
+[toolchain]
+# Anchor 1.1.2 / Solana CLI 3.1.10 (terpasang di mesin dev)
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+clawtube = "ClawTubeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
