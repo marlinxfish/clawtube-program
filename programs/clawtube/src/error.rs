@@ -42,4 +42,8 @@ pub enum ClawtubeError {
     PayoutWalletNotSigner,
     #[msg("Whitelist cannot exceed 3 SPL mints")]
     WhitelistOverflow,
+    #[msg("Whitelist contains a duplicate or zero mint")]
+    DuplicateMint,
+    #[msg("Authority or oracle cannot be the zero pubkey")]
+    ZeroPubkey,
 }

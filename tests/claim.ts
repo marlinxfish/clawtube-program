@@ -42,6 +42,7 @@ describe("claim", () => {
     try {
       await program.methods
         .claim(
+          platform,
           platformUid,
           "@creator",
           new anchor.BN(1),

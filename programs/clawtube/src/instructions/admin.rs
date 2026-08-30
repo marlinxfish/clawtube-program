@@ -18,17 +18,31 @@ pub fn initialize_config(
 }
 
 pub fn update_authority(ctx: Context<UpdateConfig>, new_authority: Pubkey) -> Result<()> {
+    require!(
+        new_authority != Pubkey::default(),
+        ClawtubeError::ZeroPubkey
+    );
     ctx.accounts.config.authority = new_authority;
     Ok(())
 }
 
 pub fn set_oracle(ctx: Context<UpdateConfig>, oracle: Option<Pubkey>) -> Result<()> {
+    if let Some(o) = oracle {
+        require!(o != Pubkey::default(), ClawtubeError::ZeroPubkey);
+    }
     ctx.accounts.config.oracle = oracle;
     Ok(())
 }
 
 pub fn update_whitelist(ctx: Context<UpdateConfig>, mints: Vec<Pubkey>) -> Result<()> {
     require!(mints.len() <= 3, ClawtubeError::WhitelistOverflow);
+    for (i, mint) in mints.iter().enumerate() {
+        require!(*mint != Pubkey::default(), ClawtubeError::DuplicateMint);
+        require!(
+            !mints[..i].contains(mint),
+            ClawtubeError::DuplicateMint
+        );
+    }
     let config = &mut ctx.accounts.config;
     config.spl_mint_count = mints.len() as u8;
     for (i, mint) in mints.iter().enumerate() {

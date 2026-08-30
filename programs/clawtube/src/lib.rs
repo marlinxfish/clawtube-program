@@ -53,19 +53,23 @@ pub mod clawtube {
 
     pub fn claim<'info>(
         ctx: Context<'info, Claim<'info>>,
+        platform: u8,
         platform_uid: String,
         handle: String,
         claim_nonce: u64,
         expires_at: i64,
         entry_indices: Vec<u64>,
+        mint: Option<Pubkey>,
     ) -> Result<()> {
         instructions::claim::claim(
             ctx,
+            platform,
             platform_uid,
             handle,
             claim_nonce,
             expires_at,
             entry_indices,
+            mint,
         )
     }
 

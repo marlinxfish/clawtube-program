@@ -4,6 +4,7 @@ pub mod refund;
 pub mod sweep;
 pub mod tip_sol;
 pub mod tip_spl;
+pub mod util;
 
 pub use admin::*;
 pub use claim::*;
