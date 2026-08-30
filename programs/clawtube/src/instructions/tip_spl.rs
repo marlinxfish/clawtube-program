@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
-use crate::creator_hash;
 use crate::error::ClawtubeError;
 use crate::event::TipReceived;
 use crate::state::{CreatorEscrow, Entry, EntryStatus, Platform, PlatformConfig, DONATION_FEE_BPS, MAX_PLATFORM_UID};
@@ -11,6 +10,7 @@ pub fn tip_spl(
     platform: u8,
     platform_uid: String,
     amount: u64,
+    creator_hash: [u8; 16],
 ) -> Result<()> {
     require!(amount > 0, ClawtubeError::ZeroAmount);
     let _p = Platform::from_u8(platform)?;
@@ -20,6 +20,10 @@ pub fn tip_spl(
     );
     require!(
         platform_uid.len() <= MAX_PLATFORM_UID,
+        ClawtubeError::UidMismatch
+    );
+    require!(
+        creator_hash == crate::creator_hash(platform, platform_uid.as_bytes()),
         ClawtubeError::UidMismatch
     );
 
@@ -35,7 +39,7 @@ pub fn tip_spl(
     );
 
     let escrow = &mut ctx.accounts.escrow;
-    let expected_hash = creator_hash(platform, platform_uid.as_bytes());
+    let expected_hash = creator_hash;
 
     if escrow.creator_hash == [0u8; 16] {
         escrow.creator_hash = expected_hash;
@@ -128,18 +132,20 @@ pub fn tip_spl(
 }
 
 #[derive(Accounts)]
-#[instruction(platform: u8, platform_uid: String)]
+#[instruction(platform: u8, platform_uid: String, amount: u64, creator_hash: [u8; 16])]
 pub struct TipSpl<'info> {
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, PlatformConfig>,
     /// CHECK: fee sink PDA
     #[account(mut, seeds = [b"treasury"], bump)]
     pub treasury: SystemAccount<'info>,
+    // init_if_needed is safe here (see tip_sol.rs): Anchor 1.x discriminator
+    // check + deterministic PDA + handler re-validation on reuse.
     #[account(
         init_if_needed,
         payer = donor,
         space = CreatorEscrow::SIZE,
-        seeds = [b"escrow", creator_hash(platform, platform_uid.as_bytes()).as_ref()],
+        seeds = [b"escrow", creator_hash.as_ref()],
         bump
     )]
     pub escrow: Account<'info, CreatorEscrow>,
@@ -147,7 +153,7 @@ pub struct TipSpl<'info> {
         init,
         payer = donor,
         space = Entry::SIZE,
-        seeds = [b"entry", creator_hash(platform, platform_uid.as_bytes()).as_ref(), &escrow.entry_count.to_le_bytes()[..]],
+        seeds = [b"entry", creator_hash.as_ref(), &escrow.entry_count.to_le_bytes()[..]],
         bump
     )]
     pub entry: Account<'info, Entry>,

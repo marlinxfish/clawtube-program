@@ -89,6 +89,7 @@ async function tipSol(donor: Keypair, platform: number, uid: string, amountLampo
     Buffer.from([platform]),
     borshString(uid),
     (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(amountLamports)); return b; })(),
+    Buffer.from(hash), // creator_hash [u8;16]
   ]);
   const ix = new TransactionInstruction({
     programId: PROGRAM_ID,
@@ -118,6 +119,7 @@ async function tipSpl(donor: Keypair, platform: number, uid: string, amountRaw: 
     Buffer.from([platform]),
     borshString(uid),
     (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(amountRaw); return b; })(),
+    Buffer.from(hash), // creator_hash [u8;16]
   ]);
   const ix = new TransactionInstruction({
     programId: PROGRAM_ID,
@@ -140,12 +142,12 @@ async function tipSpl(donor: Keypair, platform: number, uid: string, amountRaw: 
   await sendAndConfirmTransaction(conn, new Transaction().add(ix), [donor]);
   return { escrow, entry, vault };
 }
-
 function claimData(platform: number, uid: string, handle: string, nonce: bigint, expiresAt: bigint, indices: bigint[], mint: PublicKey | null): Buffer {
   const idxBuf = Buffer.alloc(4 + 8 * indices.length);
   idxBuf.writeUInt32LE(indices.length, 0);
   indices.forEach((v, i) => idxBuf.writeBigUInt64LE(v, 4 + 8 * i));
   const mintBuf = mint === null ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), mint.toBuffer()]);
+  const hash = creatorHash(platform, uid);
   return Buffer.concat([
     disc("claim"),
     Buffer.from([platform]),
@@ -155,6 +157,7 @@ function claimData(platform: number, uid: string, handle: string, nonce: bigint,
     (() => { const b = Buffer.alloc(8); b.writeBigInt64LE(expiresAt); return b; })(),
     idxBuf,
     mintBuf,
+    Buffer.from(hash), // creator_hash [u8;16]
   ]);
 }
 

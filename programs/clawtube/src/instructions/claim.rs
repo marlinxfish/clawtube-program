@@ -5,7 +5,6 @@ use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::instructions::{
     load_current_index_checked, load_instruction_at_checked, ID as IX_SYSVAR_ID,
 };
-use crate::creator_hash;
 use crate::error::ClawtubeError;
 use crate::event::Claimed;
 use crate::instructions::util::{require_token_account, transfer_spl_from_vault};
@@ -23,6 +22,7 @@ pub fn claim<'info>(
     expires_at: i64,
     entry_indices: Vec<u64>,
     mint: Option<Pubkey>,
+    creator_hash: [u8; 16],
 ) -> Result<()> {
     let clock = Clock::get()?;
     require!(
@@ -32,6 +32,10 @@ pub fn claim<'info>(
     require!(platform_uid.len() <= MAX_PLATFORM_UID, ClawtubeError::UidMismatch);
     require!(handle.len() <= MAX_HANDLE, ClawtubeError::UidMismatch);
     Platform::from_u8(platform)?;
+    require!(
+        creator_hash == crate::creator_hash(platform, platform_uid.as_bytes()),
+        ClawtubeError::UidMismatch
+    );
 
     {
         let escrow = &ctx.accounts.escrow;
@@ -287,7 +291,7 @@ fn parse_ed25519_instruction(data: &[u8]) -> Option<(Pubkey, &[u8])> {
     Some((pk, &data[message_offset..msg_end]))
 }
 #[derive(Accounts)]
-#[instruction(platform: u8, platform_uid: String)]
+#[instruction(platform: u8, platform_uid: String, handle: String, claim_nonce: u64, expires_at: i64, entry_indices: Vec<u64>, mint: Option<Pubkey>, creator_hash: [u8; 16])]
 pub struct Claim<'info> {
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, PlatformConfig>,
@@ -295,7 +299,7 @@ pub struct Claim<'info> {
     pub treasury: SystemAccount<'info>,
     #[account(
         mut,
-        seeds = [b"escrow", creator_hash(platform, platform_uid.as_bytes()).as_ref()],
+        seeds = [b"escrow", creator_hash.as_ref()],
         bump = escrow.bump
     )]
     pub escrow: Account<'info, CreatorEscrow>,

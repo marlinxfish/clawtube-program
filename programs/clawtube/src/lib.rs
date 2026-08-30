@@ -47,8 +47,9 @@ pub mod clawtube {
         platform: u8,
         platform_uid: String,
         amount: u64,
+        creator_hash: [u8; 16],
     ) -> Result<()> {
-        instructions::tip_sol::tip_sol(ctx, platform, platform_uid, amount)
+        instructions::tip_sol::tip_sol(ctx, platform, platform_uid, amount, creator_hash)
     }
 
     pub fn claim<'info>(
@@ -60,6 +61,7 @@ pub mod clawtube {
         expires_at: i64,
         entry_indices: Vec<u64>,
         mint: Option<Pubkey>,
+        creator_hash: [u8; 16],
     ) -> Result<()> {
         instructions::claim::claim(
             ctx,
@@ -70,6 +72,7 @@ pub mod clawtube {
             expires_at,
             entry_indices,
             mint,
+            creator_hash,
         )
     }
 
@@ -78,8 +81,9 @@ pub mod clawtube {
         platform: u8,
         platform_uid: String,
         amount: u64,
+        creator_hash: [u8; 16],
     ) -> Result<()> {
-        instructions::tip_spl::tip_spl(ctx, platform, platform_uid, amount)
+        instructions::tip_spl::tip_spl(ctx, platform, platform_uid, amount, creator_hash)
     }
 
     pub fn refund<'info>(ctx: Context<'info, Refund<'info>>) -> Result<()> {
