@@ -24,7 +24,6 @@ const PROGRAM_ID = new PublicKey("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA")
 const MINTS: Record<string, { mint: PublicKey; decimals: number }> = {
   CLAWTUBE: { mint: new PublicKey("3BDw2BVdpPxHf4uf2yLRgQbhMbnzEEsch9CRScu4otwg"), decimals: 6 },
   CLAW: { mint: new PublicKey("GEfEtWBGr8LpEc8PEyDtef4pYiewFjQ5e1srfbQTNSVm"), decimals: 6 },
-  ANSEMHACK: { mint: new PublicKey("2TDdv5xYKQoPXN5JTs95DJRtxT3Hztf45BE9xdydfbJ6"), decimals: 6 },
 };
 
 const faucet = Keypair.fromSecretKey(

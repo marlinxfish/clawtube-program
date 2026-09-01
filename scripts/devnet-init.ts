@@ -18,7 +18,6 @@ const PROGRAM_ID = new PublicKey("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA")
 const MINTS = [
   new PublicKey("3BDw2BVdpPxHf4uf2yLRgQbhMbnzEEsch9CRScu4otwg"), // CLAWTUBE
   new PublicKey("GEfEtWBGr8LpEc8PEyDtef4pYiewFjQ5e1srfbQTNSVm"), // CLAW
-  new PublicKey("2TDdv5xYKQoPXN5JTs95DJRtxT3Hztf45BE9xdydfbJ6"), // ANSEMHACK
 ];
 const ORACLE = new PublicKey("AbvVdJsfagQPAMhSR8tcHYRbQmTLyrNaoNLvVF6pNTDr"); // faucet.json = devnet oracle
 
@@ -90,7 +89,7 @@ await send(
     ],
     data: encodeUpdateWhitelist(MINTS),
   },
-  "update_whitelist (CLAWTUBE, CLAW, ANSEMHACK)"
+  "update_whitelist (CLAWTUBE, CLAW)"
 );
 
 console.log("\nConfig PDA:", configPda.toBase58());

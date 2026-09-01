@@ -13,7 +13,7 @@ ClawTube allows users to tip creators on Web2 platforms (YouTube in Phase 1, exp
 | `PlatformConfig` | `[b"config"]` | Global configuration (authority, oracle, platform registry bitmask, 3 SPL whitelist slots) |
 | `Treasury` | `[b"treasury"]` | Fee sink for SOL / SPL protocol fees |
 | `Buyback` | `[b"buyback"]` | 70% sweep sink for buyback operations |
-| `Ops` | `[b"ops"]` | 20% sweep sink for protocol operations |
+| `Ops` | `[b"ops"]` | 28% sweep sink for protocol operations / infrastructure |
 | `CreatorEscrow` | `[b"escrow", creator_hash]` | Creator escrow account (`creator_hash = sha256(platform ++ uid)[:16]`) |
 | `Entry` | `[b"entry", creator_hash, index_le]` | Individual tip entry recording donor, amount, status, expiry, and sweep windows |
 
@@ -27,7 +27,7 @@ ClawTube allows users to tip creators on Web2 platforms (YouTube in Phase 1, exp
 6. `tip_spl(platform: u8, platform_uid: String, amount: u64)` — Tips whitelisted SPL tokens (2% fee, 98% vault ATA).
 7. `claim(platform: u8, platform_uid: String, handle: String, claim_nonce: u64, expires_at: i64, entry_indices: Vec<u64>)` — Creator claims accumulated active tips with Ed25519 oracle attestation (5% claim fee). SPL entries require the vault/payout/treasury ATAs + token program as optional accounts.
 8. `refund()` — Donor refunds unclaimed tips during days 91–120.
-9. `sweep()` — Permissionless sweep for stale tips after day 120 (70% buyback / 20% ops / 10% sweeper bounty).
+9. `sweep()` — Permissionless sweep for stale tips after day 120 (70% buyback / 28% ops / 2% sweeper bounty).
 
 ## Fee & Lifecycle Schedule
 
@@ -35,7 +35,7 @@ ClawTube allows users to tip creators on Web2 platforms (YouTube in Phase 1, exp
 - **Claim Fee**: 500 bps (5%)
 - **Claim Window**: Day 0–90
 - **Refund Window**: Day 91–120 (donor only)
-- **Sweep Window**: Day 121+ (permissionless, 70/20/10 split)
+- **Sweep Window**: Day 121+ (permissionless, 70/28/2 split)
 
 ## Verification & Testing
 

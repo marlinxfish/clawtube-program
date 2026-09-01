@@ -27,15 +27,15 @@ pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
         .ok_or(ClawtubeError::VaultInvariantViolated)?
         .checked_div(100)
         .ok_or(ClawtubeError::VaultInvariantViolated)?;
-    let o20 = amount
-        .checked_mul(20)
+    let o28 = amount
+        .checked_mul(28)
         .ok_or(ClawtubeError::VaultInvariantViolated)?
         .checked_div(100)
         .ok_or(ClawtubeError::VaultInvariantViolated)?;
-    let s10 = amount
+    let s2 = amount
         .checked_sub(b70)
         .ok_or(ClawtubeError::VaultInvariantViolated)?
-        .checked_sub(o20)
+        .checked_sub(o28)
         .ok_or(ClawtubeError::VaultInvariantViolated)?;
 
     if mint.is_none() {
@@ -59,11 +59,11 @@ pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
             .ok_or(ClawtubeError::VaultInvariantViolated)?;
         **ops_info.try_borrow_mut_lamports()? = ops_info
             .lamports()
-            .checked_add(o20)
+            .checked_add(o28)
             .ok_or(ClawtubeError::VaultInvariantViolated)?;
         **sweeper_info.try_borrow_mut_lamports()? = sweeper_info
             .lamports()
-            .checked_add(s10)
+            .checked_add(s2)
             .ok_or(ClawtubeError::VaultInvariantViolated)?;
     } else {
         let mint_key = mint.unwrap();
@@ -112,8 +112,8 @@ pub fn sweep<'info>(ctx: Context<'info, Sweep<'info>>) -> Result<()> {
         let escrow_bump = ctx.accounts.escrow.bump;
 
         transfer_spl_from_vault(&ctx.accounts.token_program, vault, buyback_ata, &escrow_info, escrow_hash, escrow_bump, b70)?;
-        transfer_spl_from_vault(&ctx.accounts.token_program, vault, ops_ata, &escrow_info, escrow_hash, escrow_bump, o20)?;
-        transfer_spl_from_vault(&ctx.accounts.token_program, vault, sweeper_ata, &escrow_info, escrow_hash, escrow_bump, s10)?;
+        transfer_spl_from_vault(&ctx.accounts.token_program, vault, ops_ata, &escrow_info, escrow_hash, escrow_bump, o28)?;
+        transfer_spl_from_vault(&ctx.accounts.token_program, vault, sweeper_ata, &escrow_info, escrow_hash, escrow_bump, s2)?;
 
         ctx.accounts.escrow.vault_totals[slot] = ctx.accounts.escrow.vault_totals[slot]
             .checked_sub(amount)

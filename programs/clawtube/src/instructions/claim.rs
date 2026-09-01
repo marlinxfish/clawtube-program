@@ -64,7 +64,7 @@ pub fn claim<'info>(
     expected_msg.extend_from_slice(&(handle.len() as u32).to_le_bytes());
     expected_msg.extend_from_slice(handle.as_bytes());
 
-    verify_oracle_attestation(&ctx.accounts.sysvar_instructions, &oracle, &expected_msg)?;
+    verify_oracle_attestation(&ctx.accounts.sysvar_instructions.to_account_info(), &oracle, &expected_msg)?;
 
     // Bind handle: set on first claim, must match thereafter.
     {
@@ -307,7 +307,7 @@ pub struct Claim<'info> {
     pub payout: Signer<'info>,
     /// CHECK: sysvar instructions account for Ed25519 introspection
     #[account(address = IX_SYSVAR_ID)]
-    pub sysvar_instructions: AccountInfo<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }

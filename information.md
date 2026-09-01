@@ -36,8 +36,7 @@ Informasi alamat on-chain untuk branch **devnet** (testnet Solana). Nilai mainne
 | :--- | :--- | :--- | :--- |
 | ClawTube | `CLAWTUBE` | `3BDw2BVdpPxHf4uf2yLRgQbhMbnzEEsch9CRScu4otwg` | 6 |
 | Claw | `CLAW` | `GEfEtWBGr8LpEc8PEyDtef4pYiewFjQ5e1srfbQTNSVm` | 6 |
-| AnsemHack | `ANSEMHACK` | `2TDdv5xYKQoPXN5JTs95DJRtxT3Hztf45BE9xdydfbJ6` | 6 |
-| Solana (native) | `SOL` | — | 9 |
+| Solana (native) | `SOL` | `11111111111111111111111111111111` | 9 |
 
 Token Program: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`
 
@@ -53,7 +52,7 @@ Token Program: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`
 | Field | Nilai |
 | :--- | :--- |
 | `platform_registry` | `0x01` (hanya YouTube aktif) |
-| `spl_mint_count` | `3` |
+| `spl_mint_count` | `2` (CLAWTUBE, CLAW) |
 | `oracle` | `AbvVdJsfagQPAMhSR8tcHYRbQmTLyrNaoNLvVF6pNTDr` |
 | `authority` | `6pnj24Nk5M8PvntXqw4ZPqjXeQoBo7ZCxSUoVm8Cn1Ct` |
 
@@ -63,4 +62,4 @@ Token Program: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`
 | :--- | :--- | :--- |
 | Donation fee | 200 (2%) | donor → treasury |
 | Claim fee | 500 (5%) | escrow → treasury |
-| Sweep split | 70/20/10 | buyback / ops / bounty |
+| Sweep split | 70/28/2 | buyback / ops (infrastruktur) / sweeper bounty |

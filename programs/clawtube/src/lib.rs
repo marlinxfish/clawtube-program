@@ -1,3 +1,6 @@
+#![allow(unexpected_cfgs)]
+#![allow(ambiguous_glob_reexports)]
+
 use anchor_lang::prelude::*;
 
 pub mod error;
@@ -9,7 +12,6 @@ pub use error::*;
 pub use event::*;
 pub use instructions::*;
 pub use state::*;
-
 declare_id!("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA");
 
 pub fn creator_hash(platform: u8, platform_uid: &[u8]) -> [u8; 16] {
@@ -180,12 +182,12 @@ mod tests {
     fn test_sweep_split_math() {
         let amount = 1_000_000_000u64;
         let b70 = amount * 70 / 100;
-        let o20 = amount * 20 / 100;
-        let s10 = amount - b70 - o20;
+        let o28 = amount * 28 / 100;
+        let s2 = amount - b70 - o28;
         assert_eq!(b70, 700_000_000); // 70%
-        assert_eq!(o20, 200_000_000); // 20%
-        assert_eq!(s10, 100_000_000); // 10%
-        assert_eq!(b70 + o20 + s10, amount);
+        assert_eq!(o28, 280_000_000); // 28%
+        assert_eq!(s2, 20_000_000); // 2%
+        assert_eq!(b70 + o28 + s2, amount);
     }
 
     #[test]

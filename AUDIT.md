@@ -47,7 +47,7 @@ several high/medium defects. All fixes are verified end-to-end on Devnet.
   ATA (signed by the escrow PDA) to the correct destination ATAs:
   - `claim`: vault → payout ATA (95%) + treasury ATA (5% fee).
   - `refund`: vault → donor ATA (100%, no fee).
-  - `sweep`: vault → buyback ATA (70%) + ops ATA (20%) + sweeper ATA (10%).
+  - `sweep`: vault → buyback ATA (70%) + ops ATA (28%) + sweeper ATA (2%).
   - Destination ATAs are passed via `remaining_accounts` and validated with
     `require_token_account` (owner, mint, authority) in `instructions/util.rs`.
 - **Verification**: `scripts/devnet-security-e2e.ts` — SPL tip → SPL claim moves

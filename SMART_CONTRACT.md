@@ -13,8 +13,8 @@ Dokumen ini menjelaskan cara kerja smart contract ClawTube secara detail: strukt
 | `CreatorEscrow` | `["escrow", creator_hash]` | brankas per-kreator: hash, uid, entry_count, nonce, vault_totals |
 | `Entry` | `["entry", creator_hash, index]` | satu donasi: amount, mint, donor, status, expires_at, sweep_at |
 | `Vault ATA` | ATA(escrow, mint) | saldo token SPL per-kreator (dibuat lazy saat SPL pertama) |
-| `Buyback` | `["buyback"]` | tujuan sweep 70% |
-| `Ops` | `["ops"]` | tujuan sweep 20% |
+| `Buyback` | `["buyback"]` | tujuan sweep 70% (buyback & burn) |
+| `Ops` | `["ops"]` | tujuan sweep 28% (infrastruktur & operasional) |
 
 `creator_hash = sha256(platform ++ platform_uid)[:16]` — mengikat brankas ke identitas kreator secara kriptografis, sehingga tidak mungkin tertukar antar-kreator.
 
@@ -78,13 +78,13 @@ Treasury mengumpulkan **dua lapis fee**:
 - Donatur menarik **100%** nominalnya (98% dari donasi awal) tanpa fee klaim.
 - Hanya donatur pemilik entri (diverifikasi via tanda tangan) yang bisa refund.
 
-### 3.5 Sweep (>120 Hari) — Split 70/20/10
+### 3.5 Sweep (>120 Hari) — Split 70/28/2
 
 ```
 Dana tersapu
  ├── 70% → Buyback Treasury    (buyback & burn $CLAWTUBE)
- ├── 20% → Ops Treasury        (operasional & insentif)
- └── 10% → Sweeper (bounty)    (gas fee refund + insentif)
+ ├── 28% → Ops Treasury        (infrastruktur & operasional)
+ └──  2% → Sweeper (bounty)    (gas fee refund + insentif)
 ```
 
 ---
@@ -111,7 +111,7 @@ Dana tersapu
 Hari 0        → Tip masuk escrow, status Entry = Active
 Hari 0–90     → Jendela klaim kreator (exclusive)
 Hari 91–120   → Jendela refund donatur (klaim kreator tertutup)
-Hari 121+     → Sweep permissionless ke treasury (split 70/20/10)
+Hari 121+     → Sweep permissionless ke treasury (split 70/28/2)
 ```
 
 - `entry_count` naik monoton per donasi; setiap donasi = satu `Entry` PDA baru.
