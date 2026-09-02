@@ -12,7 +12,7 @@ pub use error::*;
 pub use event::*;
 pub use instructions::*;
 pub use state::*;
-declare_id!("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA");
+declare_id!("7s7iAYwFvpMx47kDY4LmedGmt2g85EwH9BkqhJL46KBB");
 
 pub fn creator_hash(platform: u8, platform_uid: &[u8]) -> [u8; 16] {
     solana_program::hash::hashv(&[&[platform], platform_uid]).to_bytes()[..16]

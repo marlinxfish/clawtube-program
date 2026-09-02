@@ -1,139 +1,70 @@
-# ClawTube Smart Contract — Alur & Ekonomi Protokol
+# ClawTube Smart Contract Architecture
 
-Dokumen ini menjelaskan cara kerja smart contract ClawTube secara detail: struktur akun on-chain, 9 instruksi, **alur fee dari sisi donatur, kreator, dan sistem**, serta siklus hidup dana. Nilai konstanta diambil langsung dari kode (`programs/clawtube/src/state.rs`).
-
----
-
-## 1. Struktur Akun On-Chain (PDA)
-
-| PDA | Seed | Isi |
-| :--- | :--- | :--- |
-| `ProtocolConfig` | `["config"]` | authority, oracle, platform_registry, whitelist 3 mint |
-| `Treasury` | `["treasury"]` | fee sink SOL (akumulasi fee) |
-| `CreatorEscrow` | `["escrow", creator_hash]` | brankas per-kreator: hash, uid, entry_count, nonce, vault_totals |
-| `Entry` | `["entry", creator_hash, index]` | satu donasi: amount, mint, donor, status, expires_at, sweep_at |
-| `Vault ATA` | ATA(escrow, mint) | saldo token SPL per-kreator (dibuat lazy saat SPL pertama) |
-| `Buyback` | `["buyback"]` | tujuan sweep 70% (buyback & burn) |
-| `Ops` | `["ops"]` | tujuan sweep 28% (infrastruktur & operasional) |
-
-`creator_hash = sha256(platform ++ platform_uid)[:16]` — mengikat brankas ke identitas kreator secara kriptografis, sehingga tidak mungkin tertukar antar-kreator.
+This document details the architecture and operational mechanics of the ClawTube Solana smart contract: on-chain account structures, instructions, **fee flows across donors, creators, and protocol**, and timelock lifecycle transitions. Constant values are defined in `programs/clawtube/src/state.rs`.
 
 ---
 
-## 2. Sembilan Instruksi
+## 1. On-Chain Accounts
 
-| # | Instruksi | Fungsi | Pemanggil |
-| :--- | :--- | :--- | :--- |
-| 1 | `initialize_config` | Inisialisasi config PDA (authority, oracle, registry) | authority |
-| 2 | `update_authority` | Ganti authority | authority |
-| 3 | `set_oracle` | Ganti oracle (attestasi klaim) | authority |
-| 4 | `update_whitelist` | Set hingga 3 mint SPL (tanpa redeploy) | authority |
-| 5 | `tip_sol` | Tip native SOL | donatur |
-| 6 | `tip_spl` | Tip token SPL whitelisted | donatur |
-| 7 | `claim` | Klaim tip (dual-signature oracle + kreator) | kreator (payout) |
-| 8 | `refund` | Refund tip kedaluwarsa | donatur pemilik entri |
-| 9 | `sweep` | Sapu tip kedaluwarsa (>120 hari) | siapa pun (bounty) |
+### 1.1 `PlatformConfig`
+- **Seeds**: `[b"config"]`
+- **Size**: 172 bytes
+- Global protocol settings: Authority, Oracle Pubkey, Enabled Platform bitmask, Whitelisted SPL Mints (up to 3 mints).
 
----
+### 1.2 `CreatorEscrow`
+- **Seeds**: `[b"escrow", creator_hash]`
+- **Size**: 203 bytes
+- `creator_hash = sha256(platform ++ platform_uid)[:16]` — cryptographically binds the escrow vault to the creator identity, preventing collisions across creators.
+- Tracks `entry_count`, `last_claim_nonce`, `handle`, and per-mint token totals (`vault_totals: [u64; 3]`).
 
-## 3. Alur Fee — Per Sisi
-
-### 3.1 Sisi Donatur (Saat Tip)
-
-```
-Donasi X
- ├── 2%  (200 bps) → Treasury        ← fee donasi
- └── 98% (net)     → Escrow kreator  ← dana dititip
-```
-
-- Donatur menanggung **2% fee donasi** (dipotong on-chain dari jumlah yang dikirim).
-- **Biaya tambahan (bukan fee protokol)**: rent untuk membuat akun `Entry` (~0.0014 SOL, dikembalikan penuh saat entri ditutup), plus rent escrow PDA + ATA vault pada **donasi pertama** ke kanal baru, plus network fee validator.
-- `tip_sol` memakai lamports langsung; `tip_spl` memindahkan token dari ATA donatur ke vault ATA escrow.
-
-### 3.2 Sisi Kreator (Saat Klaim)
-
-```
-Escrow (98% dari X)
- ├── 5%  (500 bps) → Treasury     ← fee klaim
- └── 95%           → Wallet kreator
-```
-
-- Kreator menanggung **5% fee klaim** atas jumlah yang diklaim (98% dari donasi awal).
-- Klaim SPL pertama kali sekaligus membuat ATA payout kreator — sewa dipotong langsung dari hasil klaim (kreator berdompet kosong pun tetap bisa cair).
-- Klaim butuh **dua tanda tangan**: attestasi Oracle (bukti kepemilikan channel) + tanda tangan wallet payout kreator.
-
-### 3.3 Sisi Sistem (Treasury)
-
-Treasury mengumpulkan **dua lapis fee**:
-
-| Sumber | Besaran |
-| :--- | :--- |
-| Fee donasi | 2% dari setiap tip |
-| Fee klaim | 5% dari setiap klaim |
-
-**Total take maksimum = 6.9%** dari nilai donasi (permanen, konstanta program — tidak bisa diubah tanpa upgrade yang terlihat publik).
-
-### 3.4 Refund Donatur (Hari 91–120) — Tanpa Fee
-
-- Donatur menarik **100%** nominalnya (98% dari donasi awal) tanpa fee klaim.
-- Hanya donatur pemilik entri (diverifikasi via tanda tangan) yang bisa refund.
-
-### 3.5 Sweep (>120 Hari) — Split 70/28/2
-
-```
-Dana tersapu
- ├── 70% → Buyback Treasury    (buyback & burn $CLAWTUBE)
- ├── 28% → Ops Treasury        (infrastruktur & operasional)
- └──  2% → Sweeper (bounty)    (gas fee refund + insentif)
-```
+### 1.3 `Entry`
+- **Seeds**: `[b"entry", creator_hash, index.to_le_bytes()]`
+- **Size**: 123 bytes
+- Immutable record per donation: donor wallet, amount, mint (`None` for SOL), status (`Active`, `Claimed`, `Refunded`, `Swept`), `expires_at` (Day 90), `sweep_at` (Day 120).
 
 ---
 
-## 4. Contoh Angka (Donasi 1.000 SOL)
+## 2. Protocol Instructions
 
-| Tahap | Nilai | Penerima |
-| :--- | :--- | :--- |
-| Donatur kirim | 1.000 SOL | — |
-| Fee donasi (2%) | 0.020 SOL | Treasury |
-| Masuk escrow (98%) | 0.980 SOL | Escrow kreator |
-| Fee klaim (5% dari 0.980) | 0.049 SOL | Treasury |
-| Kreator terima (95%) | **0.931 SOL** | Kreator |
-
-**Dari 1.000 SOL: kreator 93.1%, treasury 6.9%.**
-
-(Untuk token SPL 6 desimal, persentasenya identik — bedanya satuan raw units, bukan lamports.)
-
----
-
-## 5. Siklus Hidup Dana (120 Hari)
-
-```
-Hari 0        → Tip masuk escrow, status Entry = Active
-Hari 0–90     → Jendela klaim kreator (exclusive)
-Hari 91–120   → Jendela refund donatur (klaim kreator tertutup)
-Hari 121+     → Sweep permissionless ke treasury (split 70/28/2)
-```
-
-- `entry_count` naik monoton per donasi; setiap donasi = satu `Entry` PDA baru.
-- Status entri: `Active` → `Claimed` / `Refunded` / `Swept` (transisi sekali, anti double-spend).
-- Invarian on-chain: `saldo vault ≥ Σ entri aktif` ditegakkan dengan checked math pada setiap mutasi.
+1. `initialize_config` — Deploys protocol configuration and assigns authority.
+2. `update_authority` — Transfers admin authority to a new keypair.
+3. `set_oracle` — Updates or pauses oracle attestation key.
+4. `update_whitelist` — Configures up to 3 whitelisted SPL tokens.
+5. `tip_sol` — Donates native SOL to creator escrow vault (2% fee to Treasury).
+6. `tip_spl` — Donates whitelisted SPL tokens to creator vault ATA (2% fee to Treasury).
+7. `claim` — Dual-signed creator claim (95% to creator payout wallet, 5% fee to Treasury).
+8. `refund` — 100% donor refund during Days 91–120.
+9. `sweep` — Permissionless liquidation after Day 120 (70% Buyback, 28% Ops, 2% Sweeper bounty).
+10. `withdraw_fees` & `withdraw_fees_spl` — Authority disbursement of protocol treasury/swept funds.
 
 ---
 
-## 6. Keamanan On-Chain
+## 3. Financial Flows & Fee Invariants
 
-- **Non-custodial** — program tidak pernah memegang private key; semua tanda tangan di klien.
-- **Attestasi Ed25519 sungguhan** — klaim memverifikasi instruksi `Ed25519SigVerify` on-chain (pubkey == oracle, message == attestasi), bukan pencarian substring. Lihat `AUDIT.md` (CRIT-1).
-- **Replay guard** — `claim_nonce` naik monoton; attestasi dibatasi 5 menit (`expires_at`).
-- **Dual-signature** — oracle saja tidak cukup menguras escrow; wajib co-sign wallet kreator.
-- **Checked math** — seluruh aritmatika anti overflow/underflow (`overflow-checks = true`).
-- **Rent-exempt guard** — saldo minimum sewa selalu dipertahankan agar akun PDA tidak tertutup.
-- **Whitelist on-chain** — mint SPL dibatasi ≤3 dan bisa diubah via `update_whitelist` tanpa redeploy program.
+### 3.1 Donor Deposit (Tip)
+- **2% Tip Fee** deducted on-chain and forwarded to the protocol Treasury PDA.
+- **98% Net Amount** deposited into the creator escrow vault.
+- One-time account rent is paid by donor: Entry PDA (~0.0015 SOL), plus Escrow PDA + Vault ATA on first channel donation.
+
+### 3.2 Creator Claim (Days 0–90)
+- **5% Claim Fee** deducted from claimed amount and forwarded to Treasury PDA.
+- **95% Net Amount** transferred directly to creator payout wallet.
+- Requires dual authorization: Ed25519 Oracle attestation signature + Creator payout wallet signature.
+
+### 3.3 Donor Refund (Days 91–120)
+- **100% Nominal Refund** (no claim fee deducted).
+- Only the recorded donor wallet can execute refund.
+
+### 3.4 Sweeper Liquidation (Days 121+)
+- **70%** routed to $CLAWTUBE open market buyback & burn.
+- **28%** routed to protocol operational infrastructure.
+- **2%** awarded as immediate bounty to the permissionless sweeper caller.
 
 ---
 
-## 7. Alamat & Detail Terkait
-
-- Alamat on-chain: [`information.md`](information.md)
-- Laporan audit: [`AUDIT.md`](AUDIT.md)
-- Spesifikasi penuh: [`../project.md`](../project.md)
+## 4. Security Model & Guarantees
+- **Non-Custodial**: Neither server nor oracle has private key custody.
+- **Strict Ed25519 Introspection**: On-chain verification confirms opcode indices match the local instruction data (`0xFFFF`), blocking instruction-index confusion.
+- **Anti-Replay Monotonic Nonces**: Every claim consumes a strictly incrementing `claim_nonce`.
+- **Checked Arithmetic**: All token and lamport calculations use `checked_*` with zero-overflow tolerance.
+- **Dual-Signature Barrier**: Oracle attestation alone cannot drain funds without the creator's payout wallet signature.
