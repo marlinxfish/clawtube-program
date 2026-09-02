@@ -37,3 +37,11 @@ pub struct Swept {
     pub mint: Option<Pubkey>,
     pub sweeper: Pubkey,
 }
+
+#[event]
+pub struct FeesWithdrawn {
+    pub pool: u8,
+    pub amount: u64,
+    pub mint: Option<Pubkey>,
+    pub recipient: Pubkey,
+}

@@ -46,4 +46,6 @@ pub enum ClawtubeError {
     DuplicateMint,
     #[msg("Authority or oracle cannot be the zero pubkey")]
     ZeroPubkey,
+    #[msg("Invalid pool type: 0=treasury, 1=buyback, 2=ops")]
+    InvalidPool,
 }

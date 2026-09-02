@@ -66,13 +66,12 @@ pub fn claim<'info>(
 
     verify_oracle_attestation(&ctx.accounts.sysvar_instructions.to_account_info(), &oracle, &expected_msg)?;
 
-    // Bind handle: set on first claim, must match thereafter.
+    // Update handle on claim if changed (e.g. social media username update).
+    // The oracle-signed attestation binds handle to platform_uid and payout.
     {
         let escrow = &mut ctx.accounts.escrow;
-        if escrow.handle.is_empty() {
+        if escrow.handle != handle {
             escrow.handle = handle.clone();
-        } else {
-            require!(escrow.handle == handle, ClawtubeError::UidMismatch);
         }
     }
 
@@ -271,20 +270,35 @@ fn verify_oracle_attestation(
 /// signatures_ix(u16) public_key_offset(u16) public_key_ix(u16)
 /// message_offset(u16) message_size(u16) message_ix(u16), then the packed
 /// signature(64) + public_key(32) + message(message_size) bytes.
-fn parse_ed25519_instruction(data: &[u8]) -> Option<(Pubkey, &[u8])> {
+pub(crate) fn parse_ed25519_instruction(data: &[u8]) -> Option<(Pubkey, &[u8])> {
     if data.len() < 16 {
         return None;
     }
     if data[0] != 1 {
         return None; // we only ever sign a single message
     }
+    let signature_offset = u16::from_le_bytes([data[2], data[3]]) as usize;
+    let signature_instruction_index = u16::from_le_bytes([data[4], data[5]]);
     let public_key_offset = u16::from_le_bytes([data[6], data[7]]) as usize;
+    let public_key_instruction_index = u16::from_le_bytes([data[8], data[9]]);
     let message_offset = u16::from_le_bytes([data[10], data[11]]) as usize;
     let message_size = u16::from_le_bytes([data[12], data[13]]) as usize;
+    let message_instruction_index = u16::from_le_bytes([data[14], data[15]]);
 
+    // Reject instructions where signature, pubkey, or message are sourced from
+    // another instruction (instruction_index != u16::MAX).
+    // This prevents instruction-index confusion / attestation forgery bypass.
+    if signature_instruction_index != u16::MAX
+        || public_key_instruction_index != u16::MAX
+        || message_instruction_index != u16::MAX
+    {
+        return None;
+    }
+
+    let sig_end = signature_offset.checked_add(64)?;
     let pk_end = public_key_offset.checked_add(32)?;
     let msg_end = message_offset.checked_add(message_size)?;
-    if pk_end > data.len() || msg_end > data.len() {
+    if sig_end > data.len() || pk_end > data.len() || msg_end > data.len() {
         return None;
     }
     let pk = Pubkey::try_from(&data[public_key_offset..pk_end]).ok()?;

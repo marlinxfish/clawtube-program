@@ -11,22 +11,44 @@ import {
 import { createHash } from "crypto";
 import * as fs from "fs";
 
-const RPC = "https://api.devnet.solana.com";
-const PROGRAM_ID = new PublicKey("FvqRRnu1tfaJbUUGbnA3oaVuGUFHz8fLEc7Yr6rWE4aA");
+const RPC = process.env.RPC_URL || "https://api.devnet.solana.com";
 
-// From token.md — devnet SPL whitelist
+// Validate required parameters explicitly — NO SILENT FALLBACKS (||)
+const rawProgramId = process.env.PROGRAM_ID;
+if (!rawProgramId || !rawProgramId.trim()) {
+  throw new Error("❌ Error: PROGRAM_ID is required! Please pass PROGRAM_ID=<PUBKEY>");
+}
+const PROGRAM_ID = new PublicKey(rawProgramId.trim());
+
+const rawOracle = process.env.ORACLE_PUBKEY;
+if (!rawOracle || !rawOracle.trim()) {
+  throw new Error("❌ Error: ORACLE_PUBKEY is required! Please pass ORACLE_PUBKEY=<PUBKEY>");
+}
+const ORACLE = new PublicKey(rawOracle.trim());
+
+const rawMintClawtube = process.env.MINT_CLAWTUBE;
+const rawMintClaw = process.env.MINT_CLAW;
+if (!rawMintClawtube || !rawMintClawtube.trim()) {
+  throw new Error("❌ Error: MINT_CLAWTUBE is required! Please pass MINT_CLAWTUBE=<MINT_PUBKEY>");
+}
+if (!rawMintClaw || !rawMintClaw.trim()) {
+  throw new Error("❌ Error: MINT_CLAW is required! Please pass MINT_CLAW=<MINT_PUBKEY>");
+}
+
 const MINTS = [
-  new PublicKey("3BDw2BVdpPxHf4uf2yLRgQbhMbnzEEsch9CRScu4otwg"), // CLAWTUBE
-  new PublicKey("GEfEtWBGr8LpEc8PEyDtef4pYiewFjQ5e1srfbQTNSVm"), // CLAW
+  new PublicKey(rawMintClawtube.trim()), // CLAWTUBE
+  new PublicKey(rawMintClaw.trim()),     // CLAW
 ];
-const ORACLE = new PublicKey("AbvVdJsfagQPAMhSR8tcHYRbQmTLyrNaoNLvVF6pNTDr"); // faucet.json = devnet oracle
+
+const deployerKeyPath = process.env.DEPLOYER_KEYPAIR_PATH || process.env.KEYPAIR_PATH;
+if (!deployerKeyPath || !deployerKeyPath.trim() || !fs.existsSync(deployerKeyPath.trim())) {
+  throw new Error(`❌ Error: DEPLOYER_KEYPAIR_PATH is required and must exist! Path: ${deployerKeyPath}`);
+}
 
 const deployer = Keypair.fromSecretKey(
-  Buffer.from(JSON.parse(fs.readFileSync(process.env.HOME + "/.config/solana/keys/deployer.json", "utf8")))
+  Buffer.from(JSON.parse(fs.readFileSync(deployerKeyPath.trim(), "utf8")))
 );
-
 const conn = new Connection(RPC, "confirmed");
-
 function disc(name: string): Buffer {
   return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
 }
