@@ -77,10 +77,9 @@ async function main() {
 
   // Entry layout: disc(8) creator_hash(16) index(8) amount(8) → amount at offset 32
   const entryAmount = entryAcc.data.readBigUInt64LE(32);
-  const net = amount - (amount * 200n) / 10000n; // DONATION_FEE_BPS = 200
+  const net = amount; // DONATION_FEE_BPS = 0 (100% net to creator escrow)
   if (entryAmount !== net) throw new Error(`entry amount ${entryAmount} != expected net ${net}`);
-  console.log(`entry amount: ${Number(entryAmount) / LAMPORTS_PER_SOL} SOL (net of 2% fee) [OK]`);
-  console.log("escrow PDA:", escrowPda.toBase58(), "lamports:", escrow.lamports);
+  console.log(`entry amount: ${Number(entryAmount) / LAMPORTS_PER_SOL} SOL (100% net, 0% fee) [OK]`);
   console.log("treasury PDA:", treasuryPda.toBase58());
   console.log("\nE2E PASS");
 }

@@ -181,8 +181,8 @@ mod tests {
         let amount = 1_000_000_000u64; // 1 SOL
         let fee = amount * DONATION_FEE_BPS / 10_000;
         let net = amount - fee;
-        assert_eq!(fee, 20_000_000); // 2%
-        assert_eq!(net, 980_000_000); // 98%
+        assert_eq!(fee, 0); // 0% donation fee
+        assert_eq!(net, 1_000_000_000); // 100% net to creator escrow
     }
 
     #[test]

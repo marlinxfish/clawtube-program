@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
-
-pub const DONATION_FEE_BPS: u64 = 200;
+pub const DONATION_FEE_BPS: u64 = 0;
 pub const CLAIM_FEE_BPS: u64 = 500;
 pub const MAX_PLATFORM_UID: usize = 64;
 pub const MAX_HANDLE: usize = 64;

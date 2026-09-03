@@ -30,9 +30,8 @@ This document details the architecture and operational mechanics of the ClawTube
 2. `update_authority` — Transfers admin authority to a new keypair.
 3. `set_oracle` — Updates or pauses oracle attestation key.
 4. `update_whitelist` — Configures up to 3 whitelisted SPL tokens.
-5. `tip_sol` — Donates native SOL to creator escrow vault (2% fee to Treasury).
-6. `tip_spl` — Donates whitelisted SPL tokens to creator vault ATA (2% fee to Treasury).
-7. `claim` — Dual-signed creator claim (95% to creator payout wallet, 5% fee to Treasury).
+5. `tip_sol` — Donates native SOL to creator escrow vault (0% fee, 100% to creator escrow).
+6. `tip_spl` — Donates whitelisted SPL tokens to creator vault ATA (0% fee, 100% to creator escrow).
 8. `refund` — 100% donor refund during Days 91–120.
 9. `sweep` — Permissionless liquidation after Day 120 (70% Buyback, 28% Ops, 2% Sweeper bounty).
 10. `withdraw_fees` & `withdraw_fees_spl` — Authority disbursement of protocol treasury/swept funds.
@@ -42,9 +41,8 @@ This document details the architecture and operational mechanics of the ClawTube
 ## 3. Financial Flows & Fee Invariants
 
 ### 3.1 Donor Deposit (Tip)
-- **2% Tip Fee** deducted on-chain and forwarded to the protocol Treasury PDA.
-- **98% Net Amount** deposited into the creator escrow vault.
-- One-time account rent is paid by donor: Entry PDA (~0.0015 SOL), plus Escrow PDA + Vault ATA on first channel donation.
+- **0% Tip Fee** (no deduction at deposit time).
+- **100% Net Amount** deposited into the creator escrow vault.
 
 ### 3.2 Creator Claim (Days 0–90)
 - **5% Claim Fee** deducted from claimed amount and forwarded to Treasury PDA.
