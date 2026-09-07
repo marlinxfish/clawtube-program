@@ -7,3 +7,8 @@ node_modules
 Cargo.lock
 test-ledger
 keys/
+
+# Local development & audit reports
+AUDIT.md
+*.audit.md
+audit.md

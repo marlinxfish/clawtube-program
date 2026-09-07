@@ -143,10 +143,13 @@ pub fn claim<'info>(
             require!(new_lamports >= escrow_min, ClawtubeError::VaultInvariantViolated);
 
             **escrow_info.try_borrow_mut_lamports()? = new_lamports;
-            **payout_info.try_borrow_mut_lamports()? = payout_info
-                .lamports()
+            let payout_min = Rent::get()?.minimum_balance(payout_info.data_len());
+            let current_payout = payout_info.lamports();
+            let new_payout = current_payout
                 .checked_add(net)
                 .ok_or(ClawtubeError::VaultInvariantViolated)?;
+            require!(new_payout >= payout_min, ClawtubeError::ZeroAmount);
+            **payout_info.try_borrow_mut_lamports()? = new_payout;
             if fee > 0 {
                 **treasury_info.try_borrow_mut_lamports()? = treasury_info
                     .lamports()
@@ -156,12 +159,7 @@ pub fn claim<'info>(
         } else {
             let mint_key = entry.mint.unwrap();
             require!(mint == Some(mint_key), ClawtubeError::VaultMismatch);
-            let slot = ctx
-                .accounts
-                .config
-                .is_mint_whitelisted(&mint_key)
-                .ok_or(ClawtubeError::MintNotWhitelisted)?;
-
+            let slot_opt = ctx.accounts.config.is_mint_whitelisted(&mint_key);
             let vault = &ctx.remaining_accounts[ata_offset];
             let payout_ata = &ctx.remaining_accounts[ata_offset + 1];
             let treasury_ata = &ctx.remaining_accounts[ata_offset + 2];
@@ -207,9 +205,9 @@ pub fn claim<'info>(
                 )?;
             }
 
-            ctx.accounts.escrow.vault_totals[slot] = ctx.accounts.escrow.vault_totals[slot]
-                .checked_sub(amount)
-                .ok_or(ClawtubeError::VaultInvariantViolated)?;
+            if let Some(slot) = slot_opt {
+                ctx.accounts.escrow.vault_totals[slot] = ctx.accounts.escrow.vault_totals[slot].saturating_sub(amount);
+            }
         }
 
         entry.status = EntryStatus::Claimed;

@@ -75,6 +75,15 @@ pub fn withdraw_fees(
         ClawtubeError::VaultMismatch
     );
 
+    let pool_lamports = ctx.accounts.pool_account.lamports();
+    let min_rent = Rent::get()?.minimum_balance(0);
+    let remaining = pool_lamports
+        .checked_sub(amount)
+        .ok_or(ClawtubeError::VaultInvariantViolated)?;
+    require!(
+        remaining == 0 || remaining >= min_rent,
+        ClawtubeError::VaultInvariantViolated
+    );
     let signer_seeds: &[&[u8]] = &[seed, &[bump]];
     anchor_lang::system_program::transfer(
         CpiContext::new_with_signer(

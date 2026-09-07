@@ -18,7 +18,7 @@ pub fn tip_sol(
         ClawtubeError::PlatformDisabled
     );
     require!(
-        platform_uid.len() <= MAX_PLATFORM_UID,
+        !platform_uid.trim().is_empty() && platform_uid.len() <= MAX_PLATFORM_UID,
         ClawtubeError::UidMismatch
     );
     require!(

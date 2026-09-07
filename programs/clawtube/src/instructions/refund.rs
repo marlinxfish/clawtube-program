@@ -45,11 +45,7 @@ pub fn refund<'info>(ctx: Context<'info, Refund<'info>>) -> Result<()> {
             .ok_or(ClawtubeError::VaultInvariantViolated)?;
     } else {
         let mint_key = mint.unwrap();
-        let slot = ctx
-            .accounts
-            .config
-            .is_mint_whitelisted(&mint_key)
-            .ok_or(ClawtubeError::MintNotWhitelisted)?;
+        let slot_opt = ctx.accounts.config.is_mint_whitelisted(&mint_key);
 
         require!(
             ctx.remaining_accounts.len() >= 2,
@@ -82,9 +78,9 @@ pub fn refund<'info>(ctx: Context<'info, Refund<'info>>) -> Result<()> {
             amount,
         )?;
 
-        ctx.accounts.escrow.vault_totals[slot] = ctx.accounts.escrow.vault_totals[slot]
-            .checked_sub(amount)
-            .ok_or(ClawtubeError::VaultInvariantViolated)?;
+        if let Some(slot) = slot_opt {
+            ctx.accounts.escrow.vault_totals[slot] = ctx.accounts.escrow.vault_totals[slot].saturating_sub(amount);
+        }
     }
 
     ctx.accounts.entry.status = EntryStatus::Refunded;
